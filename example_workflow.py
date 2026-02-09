@@ -40,7 +40,7 @@ def example_inference():
     print("\nExample 3: Running Inference")
     print("-" * 60)
     
-    weights_path = "yolov5/runs/train/yolo_logo_detection/weights/best.pt"
+    weights_path = "runs/train/yolo_logo_detection/weights/best.pt"
     test_images = "data/suzuki_logo_detection/images/test"
     
     if os.path.exists(weights_path) and os.path.exists(test_images):
@@ -63,7 +63,7 @@ def example_video_processing():
     print("\nExample 4: Video Processing")
     print("-" * 60)
     
-    weights_path = "yolov5/runs/train/yolo_logo_detection/weights/best.pt"
+    weights_path = "runs/train/yolo_logo_detection/weights/best.pt"
     
     if os.path.exists(weights_path):
         from process_video import download_youtube_video, extract_frames, run_inference
@@ -85,7 +85,7 @@ def example_video_processing():
             run_inference(frames_dir, weights_path, conf_threshold=0.3, output_name="video_detection")
             
             # Analyze results
-            output_folder = "yolov5/runs/detect/video_detection"
+            output_folder = "runs/detect/video_detection"
             if os.path.exists(output_folder):
                 label_map = {0: 'Suzuki_Logo', 1: 'Suzuki_Text'}
                 frame_coverage = analyze_frame_coverage(output_folder, label_map)
@@ -97,7 +97,7 @@ def example_video_processing():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("YOLOv5 Custom Logo Detection - Example Workflow")
+    print("YOLOv8 Custom Logo Detection - Example Workflow")
     print("=" * 60)
     
     if len(sys.argv) > 1:

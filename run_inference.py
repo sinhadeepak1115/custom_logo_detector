@@ -2,12 +2,9 @@
 Run YOLO inference on images or video.
 """
 
-import torch
-import pandas as pd
-import matplotlib.pyplot as plt
-import cv2
 import os
-import sys
+import pandas as pd
+from ultralytics import YOLO
 
 
 def run_inference_python(weights_path, image_path, conf_threshold=0.3, save_path=None):
@@ -22,42 +19,62 @@ def run_inference_python(weights_path, image_path, conf_threshold=0.3, save_path
     """
     # Load the custom trained model weights
     try:
-        model = torch.hub.load('ultralytics/yolov5', 'custom', weights_path)
-        model.conf = conf_threshold
+        model = YOLO(weights_path)
     except Exception as e:
         print(f"Error loading model: {e}")
-        print("Make sure YOLOv5 is installed: pip install yolov5")
+        print("Make sure ultralytics is installed: pip install ultralytics")
         return None
 
     # Run inference
-    results = model(image_path)
+    results = model.predict(image_path, conf=conf_threshold, save=save_path is not None)
 
     # Print the results
     if isinstance(image_path, str) and os.path.isfile(image_path):
         # Single image
-        df = results.pandas().xyxy[0]
-        print("\nDetection Results:")
-        print(df)
+        result = results[0]
+        boxes = result.boxes
         
-        # Display image with detections
+        if len(boxes) > 0:
+            # Convert to DataFrame
+            detections = []
+            for box in boxes:
+                detections.append({
+                    'xmin': float(box.xyxy[0][0]),
+                    'ymin': float(box.xyxy[0][1]),
+                    'xmax': float(box.xyxy[0][2]),
+                    'ymax': float(box.xyxy[0][3]),
+                    'confidence': float(box.conf[0]),
+                    'class': int(box.cls[0]),
+                    'name': result.names[int(box.cls[0])]
+                })
+            df = pd.DataFrame(detections)
+            print("\nDetection Results:")
+            print(df)
+        else:
+            print("\nNo detections found")
+            df = pd.DataFrame()
+        
+        # Save results if requested
         if save_path:
-            results.save(save_path)
+            result.save(save_path)
             print(f"\nSaved results to: {save_path}")
         else:
-            # Show results
-            results.show()
+            # Show results (save to default location)
+            result.save()
+            print(f"\nResults saved to: runs/detect/predict/")
             
         return df
     else:
         # Multiple images or directory
-        results.save(save_path or 'inference_results')
-        print(f"\nSaved results to: {save_path or 'inference_results'}")
+        output_dir = save_path or 'inference_results'
+        print(f"\nProcessed {len(results)} image(s)")
+        print(f"Results saved to: runs/detect/predict/")
         return results
 
 
 def run_inference_cli(source, weights_path, conf_threshold=0.3, output_name="yolo_detection", save_txt=True):
     """
-    Run inference using command line interface.
+    Run inference using command line interface (YOLOv8 CLI).
     
     Args:
         source: Source path (image, directory, or video)
@@ -66,39 +83,24 @@ def run_inference_cli(source, weights_path, conf_threshold=0.3, output_name="yol
         output_name: Name for output directory
         save_txt: Whether to save text annotations
     """
-    yolov5_dir = "yolov5"
-    if not os.path.exists(yolov5_dir):
-        print(f"YOLOv5 directory not found: {yolov5_dir}")
-        print("Please clone YOLOv5 repository first:")
-        print("  git clone https://github.com/ultralytics/yolov5")
-        return False
-
-    detect_script = os.path.join(yolov5_dir, "detect.py")
-    if not os.path.exists(detect_script):
-        print(f"detect.py not found: {detect_script}")
-        return False
-
-    # Build command
-    cmd = [
-        sys.executable,
-        detect_script,
-        "--source", source,
-        "--weights", weights_path,
-        "--conf", str(conf_threshold),
-        "--name", output_name,
-    ]
-    
-    if save_txt:
-        cmd.append("--save-txt")
-
-    print(f"Running inference: {' '.join(cmd)}")
     try:
-        import subprocess
-        result = subprocess.run(cmd, check=True, cwd=os.getcwd())
-        print(f"\nInference complete! Results saved to: yolov5/runs/detect/{output_name}/")
+        model = YOLO(weights_path)
+        
+        # Run prediction
+        results = model.predict(
+            source=source,
+            conf=conf_threshold,
+            save=True,
+            save_txt=save_txt,
+            name=output_name
+        )
+        
+        print(f"\nInference complete! Results saved to: runs/detect/{output_name}/")
         return True
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Error running inference: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -117,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument('--method', type=str, choices=['python', 'cli'], default='cli',
                         help='Method to use: python API or CLI')
     parser.add_argument('--save_txt', action='store_true',
-                        help='Save text annotations (CLI only)')
+                        help='Save text annotations')
     
     args = parser.parse_args()
     

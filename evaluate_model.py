@@ -2,12 +2,12 @@
 Evaluate trained model performance on test dataset.
 """
 
-import torch
-from pathlib import Path
 import pandas as pd
+from ultralytics import YOLO
+from pathlib import Path
 import os
 
-def evaluate_model(weights_path='yolov5/runs/train/yolo_logo_detection/weights/best.pt',
+def evaluate_model(weights_path='runs/train/yolo_logo_detection/weights/best.pt',
                    test_dir='data/images/test',
                    conf=0.3):
     """
@@ -26,8 +26,7 @@ def evaluate_model(weights_path='yolov5/runs/train/yolo_logo_detection/weights/b
     
     # Load model
     print(f"Loading model from {weights_path}...")
-    model = torch.hub.load('ultralytics/yolov5', 'custom', weights_path)
-    model.conf = conf
+    model = YOLO(weights_path)
     
     # Get test images
     test_path = Path(test_dir)
@@ -49,11 +48,23 @@ def evaluate_model(weights_path='yolov5/runs/train/yolo_logo_detection/weights/b
     images_with_detections = 0
     
     for img_path in test_images:
-        results = model(str(img_path))
-        detections = results.pandas().xyxy[0]
+        results = model.predict(str(img_path), conf=conf)
+        result = results[0]
+        boxes = result.boxes
         
-        num_detections = len(detections)
-        avg_confidence = detections['confidence'].mean() if num_detections > 0 else 0
+        # Convert to DataFrame
+        if len(boxes) > 0:
+            detections = []
+            for box in boxes:
+                detections.append({
+                    'confidence': float(box.conf[0])
+                })
+            df = pd.DataFrame(detections)
+        else:
+            df = pd.DataFrame()
+        
+        num_detections = len(df)
+        avg_confidence = df['confidence'].mean() if num_detections > 0 else 0
         
         if num_detections > 0:
             images_with_detections += 1
@@ -62,7 +73,7 @@ def evaluate_model(weights_path='yolov5/runs/train/yolo_logo_detection/weights/b
             'image': img_path.name,
             'num_detections': num_detections,
             'avg_confidence': avg_confidence,
-            'max_confidence': detections['confidence'].max() if num_detections > 0 else 0
+            'max_confidence': df['confidence'].max() if num_detections > 0 else 0
         })
     
     # Create summary DataFrame
@@ -115,7 +126,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Evaluate trained model on test dataset')
     parser.add_argument('--weights', type=str,
-                        default='yolov5/runs/train/yolo_logo_detection/weights/best.pt',
+                        default='runs/train/yolo_logo_detection/weights/best.pt',
                         help='Path to trained model weights')
     parser.add_argument('--test_dir', type=str, default='data/images/test',
                         help='Directory containing test images')

@@ -95,36 +95,27 @@ def run_inference(frames_dir, weights_path, conf_threshold=0.3, output_name="yol
         conf_threshold: Confidence threshold for detections
         output_name: Name for output directory
     """
-    yolov5_dir = "yolov5"
-    if not os.path.exists(yolov5_dir):
-        print(f"YOLOv5 directory not found: {yolov5_dir}")
-        print("Please clone YOLOv5 repository first:")
-        print("  git clone https://github.com/ultralytics/yolov5")
-        return False
-
-    detect_script = os.path.join(yolov5_dir, "detect.py")
-    if not os.path.exists(detect_script):
-        print(f"detect.py not found: {detect_script}")
-        return False
-
-    # Build command
-    cmd = [
-        sys.executable,
-        detect_script,
-        "--source", frames_dir,
-        "--weights", weights_path,
-        "--conf", str(conf_threshold),
-        "--name", output_name,
-        "--save-txt"
-    ]
-
-    print(f"Running inference: {' '.join(cmd)}")
     try:
-        result = subprocess.run(cmd, check=True, cwd=os.getcwd())
-        print(f"Inference complete! Results saved to: yolov5/runs/detect/{output_name}/")
+        from ultralytics import YOLO
+        
+        # Load model
+        model = YOLO(weights_path)
+        
+        # Run prediction
+        results = model.predict(
+            source=frames_dir,
+            conf=conf_threshold,
+            save=True,
+            save_txt=True,
+            name=output_name
+        )
+        
+        print(f"Inference complete! Results saved to: runs/detect/{output_name}/")
         return True
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"Error running inference: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 

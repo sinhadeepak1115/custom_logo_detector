@@ -1,6 +1,6 @@
-# Custom Logo Detection with YOLOv5
+# Custom Logo Detection with YOLOv8
 
-This project implements a custom logo detection system using YOLOv5, following the tutorial approach for training on custom datasets.
+This project implements a custom logo detection system using YOLOv8, following the tutorial approach for training on custom datasets.
 
 ## Project Structure
 
@@ -20,7 +20,7 @@ custom_logo/
 │           ├── train/
 │           ├── val/
 │           └── test/
-├── yolov5/                        # YOLOv5 repository (cloned)
+├── runs/                          # Training and detection results
 ├── scripts/                       # Utility scripts
 │   ├── convert_coco_to_yolo.py
 │   ├── split_dataset.py
@@ -68,7 +68,7 @@ import torch
 print(torch.cuda.is_available())  # Should return True
 ```
 
-### 4. Setup YOLOv5
+### 4. Setup YOLOv8
 
 ```bash
 chmod +x setup_yolov5.sh
@@ -77,8 +77,7 @@ chmod +x setup_yolov5.sh
 
 Or manually:
 ```bash
-git clone https://github.com/ultralytics/yolov5
-pip install -r yolov5/requirements.txt
+pip install ultralytics
 ```
 
 ## Dataset Preparation
@@ -125,7 +124,7 @@ python prepare_dataset.py \
 
 ### Step 4: Update Data Configuration
 
-Copy `data_config.yaml` to `yolov5/data/custom_logo.yaml` and update paths:
+Update `data_config.yaml` with correct paths:
 
 ```yaml
 nc: 2
@@ -137,57 +136,52 @@ test: data/suzuki_logo_detection/images/test
 
 ## Training
 
-### CPU Training
+### Using the Training Script
 
 ```bash
-python yolov5/train.py \
-    --img 640 \
-    --cfg yolov5s.yaml \
-    --hyp hyp.scratch-low.yaml \
+python train_model.py \
+    --data data_config.yaml \
+    --imgsz 640 \
+    --model yolov8n.pt \
     --batch 16 \
     --epochs 200 \
-    --data custom_logo.yaml \
-    --weights yolov5s.pt \
-    --workers 24 \
+    --workers 8 \
     --name yolo_logo_detection
 ```
 
-### GPU Training
+### Model Options
 
-```bash
-python yolov5/train.py \
-    --img 640 \
-    --cfg yolov5s.yaml \
-    --hyp hyp.scratch-low.yaml \
-    --batch 16 \
-    --epochs 200 \
-    --data custom_logo.yaml \
-    --weights yolov5s.pt \
-    --workers 1 \
-    --name yolo_logo_detection
-```
+YOLOv8 offers different model sizes:
+- `yolov8n.pt` - Nano (smallest, fastest)
+- `yolov8s.pt` - Small
+- `yolov8m.pt` - Medium
+- `yolov8l.pt` - Large
+- `yolov8x.pt` - Extra Large (largest, most accurate)
 
 **Note:** Adjust `--batch` based on your GPU memory. For 4GB GPUs, use batch size 16 or lower.
 
-Training outputs will be saved to: `yolov5/runs/train/yolo_logo_detection/`
+Training outputs will be saved to: `runs/train/yolo_logo_detection/`
 
-Best weights: `yolov5/runs/train/yolo_logo_detection/weights/best.pt`
+Best weights: `runs/train/yolo_logo_detection/weights/best.pt`
 
 ## Inference
 
 ### Python API
 
 ```python
-import torch
+from ultralytics import YOLO
 
 # Load model
-model = torch.hub.load('ultralytics/yolov5', 'custom', 
-                       'yolov5/runs/train/yolo_logo_detection/weights/best.pt')
+model = YOLO('runs/train/yolo_logo_detection/weights/best.pt')
 
 # Run inference
-results = model('path/to/image.jpg')
-results.show()
-print(results.pandas().xyxy[0])
+results = model.predict('path/to/image.jpg', conf=0.3)
+
+# Access results
+result = results[0]
+boxes = result.boxes
+for box in boxes:
+    print(f"Class: {result.names[int(box.cls[0])]}, Confidence: {box.conf[0]:.2f}")
 ```
 
 ### Command Line
@@ -195,20 +189,19 @@ print(results.pandas().xyxy[0])
 ```bash
 python run_inference.py \
     --source data/suzuki_logo_detection/images/test/ \
-    --weights yolov5/runs/train/yolo_logo_detection/weights/best.pt \
+    --weights runs/train/yolo_logo_detection/weights/best.pt \
     --conf 0.3 \
     --method cli \
     --save_txt
 ```
 
-Or directly:
+Or using YOLOv8 CLI directly:
 ```bash
-python yolov5/detect.py \
-    --source data/suzuki_logo_detection/images/test/ \
-    --weights yolov5/runs/train/yolo_logo_detection/weights/best.pt \
-    --conf 0.3 \
-    --name yolo_logo_detection \
-    --save-txt
+yolo predict \
+    model=runs/train/yolo_logo_detection/weights/best.pt \
+    source=data/suzuki_logo_detection/images/test/ \
+    conf=0.3 \
+    save_txt=True
 ```
 
 ## Video Processing
@@ -218,7 +211,7 @@ python yolov5/detect.py \
 ```bash
 python process_video.py \
     --youtube_url "https://www.youtube.com/watch?v=zc3JYvvmXxw" \
-    --weights yolov5/runs/train/yolo_logo_detection/weights/best.pt \
+    --weights runs/train/yolo_logo_detection/weights/best.pt \
     --max_frames 200 \
     --conf 0.3
 ```
@@ -227,7 +220,7 @@ python process_video.py \
 
 ```bash
 python analyze_results.py \
-    --output_folder yolov5/runs/detect/yolo_frame_detection \
+    --output_folder runs/detect/yolo_frame_detection \
     --label_map "0:Suzuki_Logo,1:Suzuki_Text" \
     --save_path coverage_plot.png
 ```
@@ -246,17 +239,18 @@ python visualize_annotations.py \
 
 ## Tips for Better Results
 
-1. **More Training Data**: YOLOv5 recommends >=1500 images per class for production use
-2. **Data Augmentation**: Use higher augmentation settings (`hyp.scratch-med.yaml` or `hyp.scratch-high.yaml`) if you have GPU resources
-3. **Model Architecture**: Try larger models (`yolov5m.yaml`, `yolov5l.yaml`, `yolov5x.yaml`) for better accuracy
+1. **More Training Data**: YOLOv8 recommends >=1500 images per class for production use
+2. **Data Augmentation**: YOLOv8 includes built-in augmentation - adjust augmentation settings in training arguments if needed
+3. **Model Architecture**: Try larger models (`yolov8m.pt`, `yolov8l.pt`, `yolov8x.pt`) for better accuracy
 4. **Training Parameters**: Increase epochs and batch size if possible
-5. **Anchor Boxes**: YOLOv5 automatically learns anchor boxes, but you can tune them manually
+5. **Image Size**: Larger image sizes (e.g., 1280) can improve accuracy but require more memory
 
 ## Troubleshooting
 
 ### CUDA Out of Memory
 - Reduce batch size: `--batch 8` or `--batch 4`
-- Use smaller model: `yolov5n.yaml` (nano)
+- Use smaller model: `yolov8n.pt` (nano)
+- Reduce image size: `--imgsz 416` instead of 640
 
 ### No GPU Detected
 - Verify CUDA installation: `nvcc --version`
@@ -266,15 +260,16 @@ python visualize_annotations.py \
 ### Import Errors
 - Make sure virtual environment is activated
 - Install missing dependencies: `pip install -r requirements.txt`
-- For YOLOv5: `pip install -r yolov5/requirements.txt`
+- For YOLOv8: `pip install ultralytics`
 
 ## References
 
-- [YOLOv5 GitHub](https://github.com/ultralytics/yolov5)
+- [YOLOv8 GitHub](https://github.com/ultralytics/ultralytics)
+- [YOLOv8 Documentation](https://docs.ultralytics.com/)
 - [Label Studio](https://labelstud.io/)
 - [COCO Format](https://cocodataset.org/#format-data)
-- [YOLO Format](https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data)
+- [YOLO Format](https://docs.ultralytics.com/datasets/)
 
 ## License
 
-This project follows the same license as YOLOv5 (AGPL-3.0).
+This project follows the same license as YOLOv8 (AGPL-3.0).

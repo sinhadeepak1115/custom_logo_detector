@@ -2,13 +2,12 @@
 Test the trained model on a single image.
 """
 
-import torch
-from PIL import Image
-import matplotlib.pyplot as plt
+import pandas as pd
+from ultralytics import YOLO
 import sys
 import os
 
-def test_image(image_path, weights_path='yolov5/runs/train/yolo_logo_detection/weights/best.pt', conf=0.3):
+def test_image(image_path, weights_path='runs/train/yolo_logo_detection/weights/best.pt', conf=0.3):
     """
     Test trained model on a single image.
     
@@ -25,17 +24,32 @@ def test_image(image_path, weights_path='yolov5/runs/train/yolo_logo_detection/w
     
     # Load the trained model
     print(f"Loading model from {weights_path}...")
-    model = torch.hub.load('ultralytics/yolov5', 'custom', weights_path)
-    model.conf = conf
+    model = YOLO(weights_path)
     
     print(f"Confidence threshold: {conf}")
     print(f"Testing on: {image_path}")
     
     # Run inference
-    results = model(image_path)
+    results = model.predict(image_path, conf=conf)
+    result = results[0]
+    boxes = result.boxes
     
-    # Get results as DataFrame
-    df = results.pandas().xyxy[0]
+    # Convert to DataFrame
+    if len(boxes) > 0:
+        detections = []
+        for box in boxes:
+            detections.append({
+                'xmin': float(box.xyxy[0][0]),
+                'ymin': float(box.xyxy[0][1]),
+                'xmax': float(box.xyxy[0][2]),
+                'ymax': float(box.xyxy[0][3]),
+                'confidence': float(box.conf[0]),
+                'class': int(box.cls[0]),
+                'name': result.names[int(box.cls[0])]
+            })
+        df = pd.DataFrame(detections)
+    else:
+        df = pd.DataFrame()
     
     print(f"\nFound {len(df)} detection(s):")
     if len(df) > 0:
@@ -47,8 +61,9 @@ def test_image(image_path, weights_path='yolov5/runs/train/yolo_logo_detection/w
     else:
         print("  No detections found (try lowering confidence threshold)")
     
-    # Display results
-    results.show()
+    # Save and display results
+    result.save()
+    print(f"\nResults saved to: runs/detect/predict/")
     
     return results, df
 
@@ -60,7 +75,7 @@ if __name__ == "__main__":
     parser.add_argument('--image', type=str, required=True,
                         help='Path to test image')
     parser.add_argument('--weights', type=str, 
-                        default='yolov5/runs/train/yolo_logo_detection/weights/best.pt',
+                        default='runs/train/yolo_logo_detection/weights/best.pt',
                         help='Path to trained model weights')
     parser.add_argument('--conf', type=float, default=0.3,
                         help='Confidence threshold (default: 0.3)')

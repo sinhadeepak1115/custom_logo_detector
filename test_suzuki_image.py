@@ -2,11 +2,12 @@
 Test if an image contains a Suzuki logo.
 """
 
-import torch
+import pandas as pd
+from ultralytics import YOLO
 from pathlib import Path
 import sys
 
-def test_suzuki_detection(image_path, weights_path='yolov5/runs/train/yolo_logo_detection12/weights/best.pt', conf=0.3):
+def test_suzuki_detection(image_path, weights_path='runs/train/yolo_logo_detection12/weights/best.pt', conf=0.3):
     """
     Test if image contains Suzuki logo.
     
@@ -31,14 +32,29 @@ def test_suzuki_detection(image_path, weights_path='yolov5/runs/train/yolo_logo_
     
     try:
         # Load the trained model
-        model = torch.hub.load('ultralytics/yolov5', 'custom', weights_path)
-        model.conf = conf
+        model = YOLO(weights_path)
         
         # Run inference
-        results = model(image_path)
+        results = model.predict(image_path, conf=conf)
+        result = results[0]
+        boxes = result.boxes
         
-        # Get results as DataFrame
-        df = results.pandas().xyxy[0]
+        # Convert to DataFrame
+        if len(boxes) > 0:
+            detections = []
+            for box in boxes:
+                detections.append({
+                    'xmin': float(box.xyxy[0][0]),
+                    'ymin': float(box.xyxy[0][1]),
+                    'xmax': float(box.xyxy[0][2]),
+                    'ymax': float(box.xyxy[0][3]),
+                    'confidence': float(box.conf[0]),
+                    'class': int(box.cls[0]),
+                    'name': result.names[int(box.cls[0])]
+                })
+            df = pd.DataFrame(detections)
+        else:
+            df = pd.DataFrame()
         
         print(f"\nResults:")
         print(f"  Found {len(df)} detection(s)")
@@ -55,9 +71,8 @@ def test_suzuki_detection(image_path, weights_path='yolov5/runs/train/yolo_logo_
             print(f"   Confidence: {df['confidence'].max():.2%}")
             
             # Save annotated image
-            output_path = 'suzuki_detection_result.jpg'
-            results.save(output_path)
-            print(f"\n  Annotated image saved to: {output_path}")
+            result.save('suzuki_detection_result.jpg')
+            print(f"\n  Annotated image saved to: suzuki_detection_result.jpg")
             
             return True
         else:
@@ -79,7 +94,7 @@ if __name__ == "__main__":
     parser.add_argument('--image', type=str, default='image(2).png',
                         help='Path to test image')
     parser.add_argument('--weights', type=str,
-                        default='yolov5/runs/train/yolo_logo_detection12/weights/best.pt',
+                        default='runs/train/yolo_logo_detection12/weights/best.pt',
                         help='Path to trained model weights')
     parser.add_argument('--conf', type=float, default=0.3,
                         help='Confidence threshold')

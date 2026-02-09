@@ -1,5 +1,5 @@
-# YOLOv5 dataset configuration file
-# Path: yolov5/data/custom_logo.yaml (or similar)
+# YOLOv8 dataset configuration file
+# Path: data_config.yaml
 
 # Number of classes
 nc: 2

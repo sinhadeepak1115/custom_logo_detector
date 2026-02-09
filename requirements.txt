@@ -11,8 +11,8 @@ scikit-learn>=0.24.0
 # For CUDA 11.8: pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118
 # Check https://pytorch.org/get-started/locally/ for your specific setup
 
-# YOLOv5 (will be installed when cloning the repo)
-# After cloning: pip install -r yolov5/requirements.txt
+# YOLOv8
+ultralytics>=8.0.0
 
 # Video processing (optional)
 yt-dlp>=2023.0.0  # or youtube-dl (older)
