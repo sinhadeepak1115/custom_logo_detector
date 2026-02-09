@@ -96,14 +96,13 @@ def quick_start(label_studio_output_dir, output_base='data'):
     print("Quick start complete!")
     print("=" * 60)
     print(f"\nNext steps:")
-    print(f"1. Update yolov5/data/custom_logo.yaml with paths:")
+    print(f"1. Update data_config.yaml with paths:")
     print(f"   train: {output_base}/suzuki_logo_detection/images/train")
     print(f"   val: {output_base}/suzuki_logo_detection/images/val")
     print(f"   test: {output_base}/suzuki_logo_detection/images/test")
     print(f"\n2. Train your model:")
-    print(f"   python yolov5/train.py --img 640 --cfg yolov5s.yaml --hyp hyp.scratch-low.yaml \\")
-    print(f"       --batch 16 --epochs 200 --data custom_logo.yaml --weights yolov5s.pt \\")
-    print(f"       --workers 1 --name yolo_logo_detection")
+    print(f"   python train_model.py --data data_config.yaml --model yolov8n.pt \\")
+    print(f"       --batch 16 --epochs 200 --imgsz 640 --name yolo_logo_detection")
     
     return True
 
