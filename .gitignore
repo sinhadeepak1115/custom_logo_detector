@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# YOLOv5
+yolov5/
+*.pt
+*.pth
+
+# Data
+data/suzuki_logo_detection/
+data/videos/
+*.mp4
+*.avi
+*.mov
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Results
+runs/
+inference_results/
+*.png
+*.jpg
+coverage_plot.png
+
+# Logs
+*.log

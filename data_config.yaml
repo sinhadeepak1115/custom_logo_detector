@@ -1,0 +1,13 @@
+# YOLOv5 dataset configuration file
+# Path: yolov5/data/custom_logo.yaml (or similar)
+
+# Number of classes
+nc: 2
+
+# Class names
+names: ['Suzuki_Logo', 'Suzuki_Text']
+
+# Dataset paths (will be set during training)
+# train: data/suzuki_logo_detection/images/train
+# val: data/suzuki_logo_detection/images/val
+# test: data/suzuki_logo_detection/images/test
